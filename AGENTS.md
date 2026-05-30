@@ -2,7 +2,7 @@
 
 ## Status
 
-**Alpha / scaffold.** All 10 tools in `server.py` return stubs (`_stub: True`). Real HTTP client work goes in `src/spanish_grid_mcp/clients/*.py`.
+**Alpha.** All 10 tools are wired to real HTTP clients (`clients/esios.py`, `clients/ree.py`, `clients/aemet.py`) with disk caching via `cache.py`.
 
 ## Setup
 
@@ -25,7 +25,7 @@ cp .env.example .env
 
 ## Architecture
 
-- `server.py` — FastMCP app, tool definitions, `main()`. 10 tools wired as stubs.
+- `server.py` — FastMCP app, tool definitions, `main()`. 10 tools wired as real HTTP calls.
 - `clients/esios.py` — ESIOS API (`https://api.esios.ree.es`, auth via `x-api-key` header with `ESIOS_TOKEN`).
 - `clients/ree.py` — REE apidatos (`https://apidatos.ree.es`, no auth).
 - `clients/aemet.py` — AEMET OpenData (`https://opendata.aemet.es/opendata/api`, auth via `api_key` query param with `AEMET_TOKEN`). Uses a two-step fetch pattern.
@@ -36,5 +36,5 @@ cp .env.example .env
 - `dotenv` is loaded at import side effect in `server.py:15` — no need to call `load_dotenv()` manually.
 - Ruff config: line-length 100, target `py310`.
 - All tests use `pytest-asyncio` (`@pytest.mark.asyncio`).
-- Client stubs currently export `is_configured()` helpers — real implementations should reuse these.
+- Client modules export `is_configured()` helpers — use them in tools to return early when tokens are missing.
 - AEMET data requires two HTTP requests: a POST-like GET that returns a data URL, then a GET to that URL.
