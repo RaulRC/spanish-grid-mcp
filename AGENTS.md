@@ -16,16 +16,20 @@ cp .env.example .env
 
 | What | Command |
 |------|---------|
-| Run server (stdio MCP) | `python -m spanish_grid_mcp.server` |
+| Run MCP server (stdio) | `python -m spanish_grid_mcp.server` |
+| Run REST API | `python -m spanish_grid_mcp.rest` |
+| Run REST API (prod) | `uvicorn spanish_grid_mcp.rest:app --host 0.0.0.0 --port 8000` |
 | Run all tests | `pytest` |
 | Run single test | `pytest tests/test_server.py::test_all_tools_registered -v` |
 | Lint / format check | `ruff check` |
 | Lint + fix | `ruff check --fix` |
-| Entrypoint (also a console_scripts entry) | `spanish_grid_mcp.server:main` |
+| Entrypoint (MCP) | `spanish-grid-mcp` |
+| Entrypoint (REST) | `spanish-grid-rest` |
 
 ## Architecture
 
 - `server.py` — FastMCP app, tool definitions, `main()`. 10 tools wired as real HTTP calls.
+- `rest.py` — FastAPI app, 11 routes, auto OpenAPI at `/docs`. Reuses same client modules.
 - `clients/esios.py` — ESIOS API (`https://api.esios.ree.es`, auth via `x-api-key` header with `ESIOS_TOKEN`).
 - `clients/ree.py` — REE apidatos (`https://apidatos.ree.es`, no auth).
 - `clients/aemet.py` — AEMET OpenData (`https://opendata.aemet.es/opendata/api`, auth via `api_key` query param with `AEMET_TOKEN`). Uses a two-step fetch pattern.

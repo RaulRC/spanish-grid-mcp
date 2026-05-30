@@ -1,11 +1,11 @@
 # spanish-grid-mcp
 
-**Alpha** — MCP server exposing Spanish electricity grid data as tools for any
-MCP-compatible LLM client (Claude Desktop, opencode, custom agents).
+**Alpha** — Spanish electricity grid data, served as MCP tools *(for LLM
+agents)* and as a REST API *(for everything else)*.
 
 ```json
-// Ask your LLM: "What was the average Spanish day-ahead price yesterday?"
-// It calls get_day_ahead_price, gets real data from Red Eléctrica.
+// MCP:  "What was the average price yesterday?"
+// REST: curl http://localhost:8000/api/day-ahead-price?start=...&end=...
 ```
 
 ### Data sources
@@ -81,6 +81,48 @@ Point it at `python -m spanish_grid_mcp.server` with the two env vars set.
 
 ---
 
+## REST API
+
+The same data is also available as a FastAPI REST server with auto-generated
+docs at **`http://localhost:8000/docs`**.
+
+```bash
+pip install spanish-grid-mcp
+
+python -m spanish_grid_mcp.rest
+# → uvicorn running on http://127.0.0.1:8000
+
+# production
+uvicorn spanish_grid_mcp.rest:app --host 0.0.0.0 --port 8000
+```
+
+### Endpoints
+
+All `GET` requests, all return JSON.
+
+| Endpoint | Parameters | Description |
+|---|---|---|
+| `/health` | — | Health check |
+| `/api/day-ahead-price` | `start`, `end`, `granularity` | Day-ahead market prices, €/MWh |
+| `/api/pvpc-price` | `start`, `end`, `tariff` | PVPC regulated tariff, €/MWh |
+| `/api/demand` | `start`, `end` | Electricity demand, MW |
+| `/api/generation-mix` | `start`, `end`, `granularity` | Generation by technology, MW |
+| `/api/cross-border-flows` | `start`, `end` | International exchange balance, MW |
+| `/api/co2-intensity` | `start`, `end` | CO₂ intensity, gCO₂/kWh |
+| `/api/weather-stations` | `region` (optional) | AEMET station inventory |
+| `/api/weather-observations` | `station_id`, `start`, `end` | Hourly weather observations |
+| `/api/esios/search` | `q`, `limit` | Search ESIOS indicators |
+| `/api/esios/indicator/{id}` | `start`, `end` | Raw ESIOS indicator |
+
+```bash
+# Examples
+curl "http://localhost:8000/api/demand?start=2025-06-01&end=2025-06-02"
+curl "http://localhost:8000/api/co2-intensity?start=2025-06-01&end=2025-06-02"
+curl "http://localhost:8000/api/weather-stations?region=MD"
+```
+
+---
+
 ## Tools
 
 | Tool | Data source | Granularity | Description |
@@ -106,8 +148,9 @@ Point it at `python -m spanish_grid_mcp.server` with the two env vars set.
 ## Architecture
 
 ```
-server.py  ← FastMCP app, 10 tool definitions, main()
-  │
+server.py  ← FastMCP app, 10 MCP tools, main()         [MCP over stdio]
+rest.py    ← FastAPI app, 11 routes, auto OpenAPI docs  [REST over HTTP]
+
   ├─ clients/esios.py  →  api.esios.ree.es  (x-api-key auth)
   ├─ clients/ree.py    →  apidatos.ree.es    (no auth)
   └─ clients/aemet.py  →  opendata.aemet.es  (api_key query param)
@@ -124,6 +167,8 @@ server.py  ← FastMCP app, 10 tool definitions, main()
 - **AEMET encoding:** Responses are ISO-8859-15 — decoded via
   `resp.content.decode(charset)` rather than `resp.json()`.
 - **Dotenv:** Loaded automatically on import — no manual `load_dotenv()` needed.
+- **Dual protocol:** Both `server.py` and `rest.py` share the same client
+  modules — data logic is not duplicated.
 
 ---
 
@@ -164,6 +209,7 @@ All tests use `pytest-asyncio` and mock HTTP calls. CI runs on push/PR
   `get_esios_indicator` escape hatch.
 - **CLI one-shot mode** — Let users run `spanish-grid-mcp get_demand
   2025-06-01 2025-06-02` as a standalone CLI command without an MCP client.
+  (Partially covered by the REST API — `curl` is the one-shot tool.)
 - **Solar irradiance in kWh/m²** — Normalise AEMET solar radiation data to
   standard energy units.
 - **Integration tests** — Scheduled tests that exercise the real APIs (with
