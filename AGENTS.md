@@ -33,7 +33,7 @@ cp .env.example .env
 
 ## Conventions
 
-- `dotenv` is loaded at import side effect in `server.py:15` — no need to call `load_dotenv()` manually.
+- `dotenv` is loaded at import side effect in `clients/__init__.py` — no need to call `load_dotenv()` manually.
 - Ruff config: line-length 100, target `py310`.
 - All tests use `pytest-asyncio` (`@pytest.mark.asyncio`).
 - Client modules export `is_configured()` helpers — use them in tools to return early when tokens are missing.
