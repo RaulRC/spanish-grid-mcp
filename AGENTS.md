@@ -19,6 +19,8 @@ cp .env.example .env
 | Run MCP server (stdio) | `python -m spanish_grid_mcp.server` |
 | Run REST API | `python -m spanish_grid_mcp.rest` |
 | Run REST API (prod) | `uvicorn spanish_grid_mcp.rest:app --host 0.0.0.0 --port 8000` |
+| Run Docker | `docker compose up -d` |
+| Build Docker | `docker build -t spanish-grid-mcp .` |
 | Run all tests | `pytest` |
 | Run single test | `pytest tests/test_server.py::test_all_tools_registered -v` |
 | Lint / format check | `ruff check` |

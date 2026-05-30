@@ -145,6 +145,26 @@ curl "http://localhost:8000/api/weather-stations?region=MD"
 
 ---
 
+## Docker
+
+```bash
+# build and run
+docker compose up -d
+
+# or build manually
+docker build -t spanish-grid-mcp .
+docker run -d --env-file .env -p 8000:8000 spanish-grid-mcp
+
+# verify
+curl http://localhost:8000/health
+curl http://localhost:8000/docs
+```
+
+The container runs the REST API on port 8000. Cache is persisted in a named
+volume (`spanish-grid-cache`). Supply tokens via `.env` or individual env vars.
+
+---
+
 ## Architecture
 
 ```
