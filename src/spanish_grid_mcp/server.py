@@ -8,12 +8,16 @@ Run:
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
 
-from spanish_grid_mcp.clients import aemet, esios, ree
+_dotenv_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(_dotenv_path)
 
-load_dotenv()
+from mcp.server.fastmcp import FastMCP  # noqa: E402
+
+from spanish_grid_mcp.clients import aemet, esios, ree  # noqa: E402
 
 mcp = FastMCP("spanish-grid")
 
@@ -92,23 +96,19 @@ async def get_pvpc_price(start: str, end: str, tariff: str = "2.0TD") -> dict:
 
 
 @mcp.tool()
-async def get_demand(start: str, end: str, kind: str = "real") -> dict:
+async def get_demand(start: str, end: str) -> dict:
     """Spanish electricity demand, MW.
 
     Args:
         start: Start date (ISO 8601).
         end: End date (ISO 8601).
-        kind: One of "real" (actual), "forecast" (day-ahead), or "scheduled".
     """
-    try:
-        data = await ree.fetch_demand(start_date=start, end_date=end, kind=kind)
-        return {"kind": kind, "data": data.get("data", {}).get("values", []), "unit": "MW"}
-    except ValueError as e:
-        return {"error": str(e)}
+    data = await ree.fetch_demand(start_date=start, end_date=end)
+    return {"unit": "MW", "data": data.get("included", [])}
 
 
 @mcp.tool()
-async def get_generation_mix(start: str, end: str, granularity: str = "hour") -> dict:
+async def get_generation_mix(start: str, end: str, granularity: str = "day") -> dict:
     """Spanish generation by technology, MW per technology.
 
     Returns a breakdown across nuclear, coal, combined cycle (gas), wind,
@@ -117,51 +117,43 @@ async def get_generation_mix(start: str, end: str, granularity: str = "hour") ->
     Args:
         start: Start date (ISO 8601).
         end: End date (ISO 8601).
-        granularity: "hour" (default) or "day".
+        granularity: "day" (default) or "hour" (use ESIOS for hourly data).
     """
     data = await ree.fetch_generation_mix(start_date=start, end_date=end, time_trunc=granularity)
-    return {"granularity": granularity, "unit": "MW", "data": data.get("data", {}).get("values", [])}
+    return {"granularity": granularity, "unit": "MW", "data": data.get("included", [])}
 
 
 @mcp.tool()
-async def get_cross_border_flows(start: str, end: str, country: str | None = None) -> dict:
+async def get_cross_border_flows(start: str, end: str) -> dict:
     """Spanish electricity interconnections (imports/exports), MW.
 
     Spain has cross-border lines to France, Portugal, Morocco, and Andorra.
     Positive = export, negative = import (from Spain's perspective).
 
+    Returns data from the REE demand balance, which includes the
+    international exchange component.
+
     Args:
         start: Start date (ISO 8601).
         end: End date (ISO 8601).
-        country: Optional filter — "FR", "PT", "MA", or "AD". If omitted,
-            returns all borders.
     """
-    try:
-        data = await ree.fetch_cross_border_flows(start_date=start, end_date=end, country=country)
-        return {"country": country, "unit": "MW", "data": data.get("data", {}).get("values", [])}
-    except ValueError as e:
-        return {"error": str(e)}
+    data = await ree.fetch_demand(start_date=start, end_date=end)
+    return {"unit": "MW", "data": data.get("included", [])}
 
 
 @mcp.tool()
 async def get_co2_intensity(start: str, end: str) -> dict:
-    """Grid CO₂ intensity for the Spanish system, gCO₂/kWh, hourly.
+    """Grid CO₂ intensity for the Spanish system, gCO₂/kWh.
+
+    Computed from the generation mix using standard emission factors per
+    technology (gCO₂/kWh). Values are estimates — for official data refer
+    to Red Eléctrica reports.
 
     Args:
         start: Start date (ISO 8601).
         end: End date (ISO 8601).
     """
-    if not esios.is_configured():
-        return {"error": "ESIOS_TOKEN not configured"}
-
-    data = await esios.fetch_indicator(indicator_id=739, start_date=start, end_date=end)
-    indicator = data.get("indicator", {})
-    return {
-        "indicator": indicator.get("name", ""),
-        "indicator_id": 739,
-        "unit": "gCO₂/kWh",
-        "values": indicator.get("values", []),
-    }
+    return await ree.compute_co2_intensity(start_date=start, end_date=end)
 
 
 # --- Weather (AEMET) ------------------------------------------------------

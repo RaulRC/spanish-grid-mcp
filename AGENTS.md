@@ -38,3 +38,7 @@ cp .env.example .env
 - All tests use `pytest-asyncio` (`@pytest.mark.asyncio`).
 - Client modules export `is_configured()` helpers — use them in tools to return early when tokens are missing.
 - AEMET data requires two HTTP requests: a POST-like GET that returns a data URL, then a GET to that URL.
+- REE apidatos rejects `time_trunc=hour` for historical data — use `"day"`. Hourly granularity available via ESIOS.
+- AEMET station list uses `/valores/climatologicos/inventarioestaciones/todasestaciones` (station inventory with province metadata), NOT `/observacion/convencional/todas` (which only has observation fields, no `provincia`).
+- AEMET station inventory returns province names in UPPERCASE with accents (e.g. `"MADRID"`, `"A CORUÑA"`).
+- AEMET ISO-8859-15 encoding: always `resp.content.decode(charset)` not `resp.json()`.
