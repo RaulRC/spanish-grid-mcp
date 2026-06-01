@@ -4,7 +4,8 @@ Data sources: ESIOS (prices, indicators), REE apidatos (demand, generation,
 flows), AEMET OpenData (weather).
 
 Run:
-    python -m spanish_grid_mcp.server
+    python -m spanish_grid_mcp.server                        # stdio (default)
+    python -m spanish_grid_mcp.server --transport streamable-http  # HTTP
 """
 from __future__ import annotations
 
@@ -244,7 +245,17 @@ async def get_esios_indicator(indicator_id: int, start: str, end: str) -> dict:
 
 
 def main() -> None:
-    mcp.run()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="spanish-grid MCP server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse", "streamable-http"],
+        default="stdio",
+        help="Transport protocol (default: stdio)",
+    )
+    args = parser.parse_args()
+    mcp.run(transport=args.transport)
 
 
 if __name__ == "__main__":
